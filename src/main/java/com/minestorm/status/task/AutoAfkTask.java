@@ -3,7 +3,6 @@ package com.minestorm.status.task;
 import com.minestorm.status.MineStormStatus;
 import com.minestorm.status.manager.StatusManager;
 import com.minestorm.status.manager.StatusType;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -28,6 +27,7 @@ public final class AutoAfkTask extends BukkitRunnable {
         long timeoutMillis = timeoutSeconds * 1000L;
         boolean override = config.getBoolean("auto-afk.override-existing-status", false);
         boolean sendMessage = config.getBoolean("auto-afk.send-message", true);
+        boolean actionBar = config.getBoolean("action-bar.enabled", true);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (player.hasPermission("minestormstatus.afk.bypass")) {
@@ -42,11 +42,10 @@ public final class AutoAfkTask extends BukkitRunnable {
 
             manager.setAutoIdle(id);
             if (sendMessage) {
-                player.sendMessage(plugin.getMessages().get(
-                        "afk.now-idle", Placeholder.unparsed("seconds", String.valueOf(timeoutSeconds))));
+                plugin.getMessages().send(player, "afk.now-idle", "{seconds}", String.valueOf(timeoutSeconds));
             }
-            if (config.getBoolean("action-bar.enabled", true)) {
-                player.sendActionBar(plugin.getMessages().hud(StatusType.IDLE));
+            if (actionBar) {
+                plugin.getActionBar().send(player, plugin.getMessages().hud(player, StatusType.IDLE));
             }
         }
     }

@@ -2,34 +2,35 @@ package com.minestorm.status.util;
 
 import com.minestorm.status.MineStormStatus;
 import com.minestorm.status.manager.StatusType;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Loads messages.yml (MiniMessage) with the jar's copy as fallback defaults,
- * so missing keys never break the plugin after an update.
+ * Loads messages.yml (legacy &amp; colors, &amp;#RRGGBB hex, {placeholders}, optional PlaceholderAPI).
+ * The jar's copy is used as fallback for missing keys, so updates never break existing files.
  */
 public final class Messages {
 
-    private static final MiniMessage MINI = MiniMessage.miniMessage();
-
     private final MineStormStatus plugin;
-    private final Map<String, Component> cache = new ConcurrentHashMap<>();
     private volatile FileConfiguration messages = new YamlConfiguration();
+
+    private boolean papiChecked;
+    private Method papiMethod;
 
     public Messages(MineStormStatus plugin) {
         this.plugin = plugin;
@@ -41,46 +42,131 @@ public final class Messages {
         if (!file.exists()) {
             plugin.saveResource("messages.yml", false);
         }
-        YamlConfiguration loaded = YamlConfiguration.loadConfiguration(file);
+
+        YamlConfiguration loaded = new YamlConfiguration();
+        try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+            loaded.load(reader);
+        } catch (IOException | InvalidConfigurationException ex) {
+            plugin.getLogger().warning("Could not read messages.yml, using defaults: " + ex.getMessage());
+        }
+
         try (InputStream in = plugin.getResource("messages.yml")) {
             if (in != null) {
-                loaded.setDefaults(YamlConfiguration.loadConfiguration(
-                        new InputStreamReader(in, StandardCharsets.UTF_8)));
+                YamlConfiguration defaults = new YamlConfiguration();
+                defaults.load(new InputStreamReader(in, StandardCharsets.UTF_8));
+                loaded.setDefaults(defaults);
             }
-        } catch (IOException ex) {
+        } catch (IOException | InvalidConfigurationException ex) {
             plugin.getLogger().warning("Could not read default messages.yml: " + ex.getMessage());
         }
         this.messages = loaded;
-        this.cache.clear();
+    }
+
+    // ------------------------------------------------------------------ building
+
+    private String process(Player player, String text, String... replacements) {
+        text = text.replace("{prefix}", messages.getString("prefix", ""));
+        for (int i = 0; i + 1 < replacements.length; i += 2) {
+            text = text.replace(replacements[i], replacements[i + 1]);
+        }
+        if (player != null) {
+            text = applyPlaceholderApi(player, text);
+        }
+        return Colors.translate(text);
     }
 
     private String raw(String key) {
         String value = messages.getString(key);
-        return value != null ? value : "<red>Missing message: " + key + "</red>";
+        return value != null ? value : "&cMissing message: " + key;
     }
 
-    private TagResolver prefix() {
-        return Placeholder.parsed("prefix", messages.getString("prefix", ""));
+    /** Message with colors + {placeholders} applied. Replacements are pairs: "{key}", "value". */
+    public String get(String key, String... replacements) {
+        return process(null, raw(key), replacements);
     }
 
-    /** Parses a message; <prefix> and any extra resolvers (e.g. <player>) are applied. */
-    public Component get(String key, TagResolver... resolvers) {
-        if (resolvers.length == 0) {
-            return cache.computeIfAbsent(key, k -> MINI.deserialize(raw(k), prefix()));
-        }
-        return MINI.deserialize(raw(key), TagResolver.resolver(prefix(), TagResolver.resolver(resolvers)));
+    /** Same as above, plus PlaceholderAPI for the given player. */
+    public String get(Player player, String key, String... replacements) {
+        return process(player, raw(key), replacements);
     }
 
-    /** Parses a list of messages (e.g. the help text). */
-    public List<Component> list(String key) {
-        List<Component> result = new ArrayList<>();
+    public List<String> list(String key, String... replacements) {
+        List<String> result = new ArrayList<String>();
         for (String line : messages.getStringList(key)) {
-            result.add(MINI.deserialize(line, prefix()));
+            result.add(process(null, line, replacements));
         }
         return result;
     }
 
-    public Component hud(StatusType type) {
-        return get("hud." + type.getKey());
+    public String hud(Player player, StatusType type) {
+        return get(player, "hud." + type.getKey());
+    }
+
+    /** Colored status name from "status-names". */
+    public String statusName(StatusType type) {
+        return get("status-names." + type.getKey());
+    }
+
+    // ------------------------------------------------------------------- sending
+
+    /** Sends a message. An empty message is not sent. */
+    public void send(CommandSender sender, String key, String... replacements) {
+        String text = sender instanceof Player
+                ? get((Player) sender, key, replacements)
+                : get(key, replacements);
+        if (!text.isEmpty()) {
+            sender.sendMessage(text);
+        }
+    }
+
+    public void sendList(CommandSender sender, String key, String... replacements) {
+        for (String line : list(key, replacements)) {
+            if (!line.isEmpty()) {
+                sender.sendMessage(line);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------- helpers
+
+    private String applyPlaceholderApi(Player player, String text) {
+        if (!plugin.getConfig().getBoolean("use-placeholderapi", true) || !Bukkit.isPrimaryThread()) {
+            return text;
+        }
+        if (!papiChecked) {
+            papiChecked = true;
+            if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                try {
+                    papiMethod = Class.forName("me.clip.placeholderapi.PlaceholderAPI")
+                            .getMethod("setPlaceholders", Player.class, String.class);
+                } catch (Throwable ignored) {
+                    papiMethod = null;
+                }
+            }
+        }
+        if (papiMethod == null) {
+            return text;
+        }
+        try {
+            Object result = papiMethod.invoke(null, player, text);
+            return result instanceof String ? (String) result : text;
+        } catch (Throwable ignored) {
+            return text;
+        }
+    }
+
+    /** 3725000 ms -> "1h 2m", 312000 ms -> "5m 12s", 8000 ms -> "8s". */
+    public static String formatDuration(long millis) {
+        long totalSeconds = Math.max(0L, millis / 1000L);
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+        if (hours > 0) {
+            return hours + "h " + minutes + "m";
+        }
+        if (minutes > 0) {
+            return minutes + "m " + seconds + "s";
+        }
+        return seconds + "s";
     }
 }

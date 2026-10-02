@@ -7,27 +7,37 @@ import com.minestorm.status.listener.ChatListener;
 import com.minestorm.status.manager.StatusManager;
 import com.minestorm.status.task.ActionBarTask;
 import com.minestorm.status.task.AutoAfkTask;
+import com.minestorm.status.util.ActionBar;
 import com.minestorm.status.util.Messages;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public final class MineStormStatus extends JavaPlugin {
+
+    /** Bump when config.yml / messages.yml change in an incompatible way. */
+    private static final int FILE_VERSION = 2;
 
     private Messages messages;
     private StatusManager statusManager;
+    private ActionBar actionBar;
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
-        saveResource("messages.yml", false); // only written if it does not exist yet
+        getDataFolder().mkdirs();
+        prepareFile("config.yml");
+        prepareFile("messages.yml");
         reloadConfig();
 
         this.messages = new Messages(this);
+        this.actionBar = new ActionBar(this);
         this.statusManager = new StatusManager(this);
+        this.statusManager.load();
 
         getServer().getPluginManager().registerEvents(new ActivityListener(this), this);
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
@@ -37,9 +47,10 @@ public final class MineStormStatus extends JavaPlugin {
             return;
         }
 
-        // Players already online (e.g. after /reload) start with fresh activity.
+        // Players already online (e.g. after /reload).
         for (Player player : Bukkit.getOnlinePlayers()) {
             statusManager.markActive(player.getUniqueId());
+            statusManager.restoreSaved(player.getUniqueId());
         }
 
         startTasks();
@@ -50,11 +61,38 @@ public final class MineStormStatus extends JavaPlugin {
     public void onDisable() {
         Bukkit.getScheduler().cancelTasks(this);
         if (statusManager != null) {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (statusManager.getStatus(player.getUniqueId()) != null) {
-                    player.sendActionBar(Component.empty());
+            if (actionBar != null) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (statusManager.getStatus(player.getUniqueId()) != null) {
+                        actionBar.clear(player);
+                    }
                 }
             }
+            statusManager.shutdown();
+        }
+    }
+
+    /**
+     * Makes sure the file exists. If an old/incompatible version is found it is renamed to
+     * "&lt;name&gt;.old" and a fresh default is written.
+     */
+    private void prepareFile(String name) {
+        File file = new File(getDataFolder(), name);
+        if (file.exists()) {
+            YamlConfiguration current = YamlConfiguration.loadConfiguration(file);
+            if (current.getInt("config-version", 0) < FILE_VERSION) {
+                File backup = new File(getDataFolder(), name + ".old");
+                if (backup.exists()) {
+                    backup.delete();
+                }
+                if (file.renameTo(backup)) {
+                    getLogger().warning(name + " was outdated. It was renamed to " + backup.getName()
+                            + " and a new " + name + " was created.");
+                }
+            }
+        }
+        if (!file.exists()) {
+            saveResource(name, false);
         }
     }
 
@@ -97,7 +135,6 @@ public final class MineStormStatus extends JavaPlugin {
         startTasks();
     }
 
-    @SuppressWarnings("deprecation")
     public String getVersion() {
         return getDescription().getVersion();
     }
@@ -108,5 +145,9 @@ public final class MineStormStatus extends JavaPlugin {
 
     public StatusManager getStatusManager() {
         return statusManager;
+    }
+
+    public ActionBar getActionBar() {
+        return actionBar;
     }
 }

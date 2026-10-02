@@ -1,8 +1,12 @@
 # ============================================================
-#  MineStormStatus - config.yml
-#  All texts live in messages.yml. Use /minestormstatus reload
-#  to apply changes without restarting.
+#  MineStormStatus - config.yml   (Created by Muvixo)
+#  All texts live in messages.yml.
+#  Use /minestormstatus reload to apply changes.
 # ============================================================
+config-version: 2
+
+# Replace %placeholders% from PlaceholderAPI in messages (needs PlaceholderAPI installed).
+use-placeholderapi: true
 
 auto-afk:
   enabled: true
@@ -13,12 +17,14 @@ auto-afk:
   # true  = players with a manual Busy/Away status are also switched to Idle.
   # false = only players with NO status are switched to Idle.
   override-existing-status: false
-  # Remove the automatic Idle status when the player becomes active again.
+  # Remove the automatic Idle status when the player becomes active again (comes back).
   clear-idle-on-activity: true
-  # Send the "afk.now-idle" message when a player is switched to Idle.
+  # Send "afk.now-idle" when a player is switched to Idle.
   send-message: true
-  # Send the "afk.returned" message when an automatic Idle status is removed.
+  # Send "afk.returned" to the player when they come back.
   send-return-message: true
+  # Tell everyone else ("afk.returned-broadcast") when a player comes back.
+  broadcast-return: false
   # Which actions count as activity (reset the inactivity timer).
   activity:
     movement: true
@@ -29,6 +35,12 @@ auto-afk:
     commands: true
     inventory: true
     blocks: true
+
+join:
+  # Send "join.welcome-back" to players who join again (not on their first join).
+  welcome-back: true
+  # Restore the manual status (Busy/Idle/Away) a player had when they left the server.
+  restore-status: true
 
 action-bar:
   enabled: true

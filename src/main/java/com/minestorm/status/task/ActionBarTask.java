@@ -2,12 +2,12 @@ package com.minestorm.status.task;
 
 import com.minestorm.status.MineStormStatus;
 import com.minestorm.status.manager.StatusType;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 
@@ -15,7 +15,7 @@ import java.util.UUID;
 public final class ActionBarTask extends BukkitRunnable {
 
     private final MineStormStatus plugin;
-    private final Set<UUID> shown = new HashSet<>();
+    private final Set<UUID> shown = new HashSet<UUID>();
 
     public ActionBarTask(MineStormStatus plugin) {
         this.plugin = plugin;
@@ -27,12 +27,17 @@ public final class ActionBarTask extends BukkitRunnable {
             UUID id = player.getUniqueId();
             StatusType status = plugin.getStatusManager().getStatus(id);
             if (status != null) {
-                player.sendActionBar(plugin.getMessages().hud(status));
+                plugin.getActionBar().send(player, plugin.getMessages().hud(player, status));
                 shown.add(id);
             } else if (shown.remove(id)) {
-                player.sendActionBar(Component.empty());
+                plugin.getActionBar().clear(player);
             }
         }
-        shown.removeIf(id -> Bukkit.getPlayer(id) == null);
+        Iterator<UUID> iterator = shown.iterator();
+        while (iterator.hasNext()) {
+            if (Bukkit.getPlayer(iterator.next()) == null) {
+                iterator.remove();
+            }
+        }
     }
 }

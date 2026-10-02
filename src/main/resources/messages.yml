@@ -1,54 +1,73 @@
 # ============================================================
-#  MineStormStatus - messages.yml
-#  Format: MiniMessage  https://docs.advntr.dev/minimessage/format.html
+#  MineStormStatus - messages.yml   (Created by Muvixo)
 #
-#  <prefix>   = the "prefix" value below (put it in any message you want prefixed)
-#  <player>   = the tagged player's name (alerts.*)
-#  <seconds>  = idle timeout in seconds (afk.now-idle)
-#  <version>  = plugin version (commands.info)
+#  COLORS
+#    &0-&9 &a-&f  colors      &l bold  &o italic  &n underline  &m strike  &k magic  &r reset
+#    &#RRGGBB     hex color (1.16+ servers; older servers use the nearest classic color)
 #
+#  PLACEHOLDERS
+#    {prefix}   the "prefix" below (put it in any message you want prefixed)
+#    {player}   player name   (alerts.*, afk.returned-broadcast, join.welcome-back)
+#    {status}   status name   (join.status-restored)
+#    {seconds}  idle timeout in seconds (afk.now-idle)
+#    {time}     how long the player was idle (afk.returned)
+#    {version}  plugin version (commands.info)
+#    PlaceholderAPI placeholders also work if PlaceholderAPI is installed.
+#
+#  An empty message ('') is not sent at all.
 #  Use /minestormstatus reload after editing.
 # ============================================================
+config-version: 2
 
-prefix: '<dark_gray>[<aqua><bold>MineStormStatus</bold></aqua><dark_gray>]</dark_gray> '
+prefix: '&8[&b&lMineStormStatus&8] &r'
 
 general:
-  players-only: '<prefix><red>Only players can use this command.</red>'
-  no-permission: '<prefix><red>You do not have permission to do that.</red>'
+  players-only: '{prefix}&cOnly players can use this command.'
+  no-permission: '{prefix}&cYou do not have permission to do that.'
+
+status-names:
+  busy: '&c&lBusy'
+  idle: '&e&lIdle'
+  away: '&7&lAway'
 
 status:
-  usage: '<prefix><red>Usage: <white>/status [busy|idle|away|clear]</white></red>'
+  usage: '{prefix}&cUsage: &f/status [busy|idle|away|clear]'
   set:
-    busy: '<prefix><gray>Your status is now <bold><red>Busy</red></bold>.</gray>'
-    idle: '<prefix><gray>Your status is now <bold><yellow>Idle</yellow></bold>.</gray>'
-    away: '<prefix><gray>Your status is now <bold><gray>Away</gray></bold>.</gray>'
-  cleared: '<prefix><gray>Your status has been cleared.</gray>'
-  nothing-to-clear: '<prefix><gray>You do not have an active status.</gray>'
+    busy: '{prefix}&7Your status is now &c&lBusy&7.'
+    idle: '{prefix}&7Your status is now &e&lIdle&7.'
+    away: '{prefix}&7Your status is now &7&lAway&7.'
+  cleared: '{prefix}&7Your status has been cleared.'
+  nothing-to-clear: '{prefix}&7You do not have an active status.'
 
 alerts:
-  busy: '<prefix><red>This player is currently busy and cannot respond right now.</red>'
-  idle: '<prefix><yellow>This player is currently idle and cannot respond right now.</yellow>'
+  busy: '{prefix}&cThis player is currently busy and cannot respond right now.'
+  idle: '{prefix}&eThis player is currently idle and cannot respond right now.'
 
 afk:
-  now-idle: '<prefix><yellow>You are currently idle.</yellow>'
-  returned: '<prefix><gray>You are no longer idle.</gray>'
+  now-idle: '{prefix}&eYou are currently idle.'
+  returned: '{prefix}&aYou are no longer idle. &7(Idle for &f{time}&7)'
+  returned-broadcast: '{prefix}&f{player} &7is back and no longer idle.'
+
+join:
+  welcome-back: '{prefix}&aWelcome back, &f{player}&a!'
+  status-restored: '{prefix}&7Your status was restored to {status}&7.'
 
 # Action bar HUD (no prefix on purpose)
 hud:
-  idle: '<white>You are currently </white><bold><yellow>IDLE</yellow></bold>'
-  busy: '<white>You are currently </white><bold><red>Busy</red></bold>'
-  away: '<white>You are currently </white><bold><gray>away</gray></bold>'
+  idle: '&fYou are currently &e&lIDLE'
+  busy: '&fYou are currently &c&lBusy'
+  away: '&fYou are currently &7&laway'
 
 commands:
-  usage: '<prefix><red>Usage: <white>/minestormstatus [help|busy|idle|away|clear|creator|info|reload]</white></red>'
-  unknown: '<prefix><red>Unknown subcommand. Use <white>/minestormstatus help</white>.</red>'
-  creator: '<prefix><gray>Created by </gray><gold><bold>Muvixo</bold></gold>'
-  info: '<prefix><gray>Running <aqua>MineStormStatus v<version></aqua> <dark_gray>|</dark_gray> Created by <gold>Muvixo</gold></gray>'
-  reload-success: '<prefix><green>Configuration and messages reloaded.</green>'
+  usage: '{prefix}&cUsage: &f/minestormstatus [help|busy|idle|away|clear|creator|info|reload]'
+  unknown: '{prefix}&cUnknown subcommand. Use &f/minestormstatus help&c.'
+  creator: '{prefix}&7Created by &6&lMuvixo'
+  info: '{prefix}&7Running &bMineStormStatus v{version} &8| &7Created by &6Muvixo'
+  reload-success: '{prefix}&aConfiguration and messages reloaded.'
   help:
-    - '<prefix><gold><bold>MineStormStatus Help</bold></gold>'
-    - '<yellow>/status [busy|idle|away|clear] <gray>- Set or clear your status'
-    - '<yellow>/minestormstatus busy|idle|away|clear <gray>- Same as /status'
-    - '<yellow>/minestormstatus creator <gray>- Show the creator'
-    - '<yellow>/minestormstatus info <gray>- Show plugin version'
-    - '<yellow>/minestormstatus reload <gray>- Reload config.yml and messages.yml'
+    - '{prefix}&6&lMineStormStatus Help'
+    - '&e/status [busy|idle|away|clear] &7- Set or clear your status'
+    - '&e/minestormstatus busy|idle|away|clear &7- Same as /status'
+    - '&e/minestormstatus creator &7- Show the creator'
+    - '&e/minestormstatus info &7- Show plugin version'
+    - '&e/minestormstatus reload &7- Reload config.yml and messages.yml'

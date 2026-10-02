@@ -1,6 +1,7 @@
 # MineStormStatus
 
-Paper/Purpur plugin by Muvixo: player statuses, auto-AFK and a persistent action bar HUD.
+Status plugin by Muvixo for **Spigot / Paper / Purpur / CraftBukkit forks, 1.8.8 and newer**.
+Busy / Idle / Away statuses, mention alerts, auto-AFK and a persistent action bar HUD.
 
 ## Commands
 | Command | Description | Permission |
@@ -12,15 +13,18 @@ Paper/Purpur plugin by Muvixo: player statuses, auto-AFK and a persistent action
 | `/minestormstatus info` | Plugin version | `minestormstatus.command` |
 | `/minestormstatus reload` | Reload config.yml + messages.yml | `minestormstatus.reload` |
 
-Other permission: `minestormstatus.afk.bypass` (exempt from auto-AFK).
+`minestormstatus.afk.bypass` exempts a player from auto-AFK.
 
-## Files
-- `config.yml` - behaviour (AFK timeout, intervals, mention alerts, which activity resets AFK).
-- `messages.yml` - every message, the prefix and the action bar HUD (MiniMessage format).
+## Colors (messages.yml)
+- Classic codes: `&a`, `&c&l`, `&r` ...
+- Hex colors: `&#RRGGBB` (1.16+ servers; older servers get the nearest classic color)
+- Placeholders: `{prefix}` `{player}` `{status}` `{seconds}` `{time}` `{version}`
+- PlaceholderAPI placeholders (`%...%`) work if PlaceholderAPI is installed
+- An empty message (`''`) disables it
 
 ## Build (two jars)
 GitHub Actions builds with JDK 17 and JDK 21:
-- `MineStormStatus-1.0.0-java17.jar` - compiled against Paper 1.20.4 API (servers on Java 17: 1.20 - 1.20.4).
-- `MineStormStatus-1.0.0-java21.jar` - compiled against Paper 1.21.4 API (servers on Java 21: 1.20.5+).
+- `MineStormStatus-1.0.0-java17.jar` - needs Java 17+ on the server
+- `MineStormStatus-1.0.0-java21.jar` - needs Java 21+ on the server
 
 Locally: `mvn clean package -Pjava17` or `mvn clean package -Pjava21`.

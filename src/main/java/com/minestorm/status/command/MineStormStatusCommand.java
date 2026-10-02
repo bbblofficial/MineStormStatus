@@ -1,19 +1,19 @@
 package com.minestorm.status.command;
 
 import com.minestorm.status.MineStormStatus;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
 /** /minestormstatus [help|busy|idle|away|clear|creator|info|reload] (alias /mss) */
-public final class MineStormStatusCommand implements TabExecutor {
+public final class MineStormStatusCommand implements CommandExecutor, TabCompleter {
 
     private final MineStormStatus plugin;
 
@@ -24,59 +24,54 @@ public final class MineStormStatusCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("minestormstatus.command")) {
-            sender.sendMessage(plugin.getMessages().get("general.no-permission"));
+            plugin.getMessages().send(sender, "general.no-permission");
             return true;
         }
         if (args.length == 0) {
-            sendHelp(sender);
+            plugin.getMessages().sendList(sender, "commands.help");
             return true;
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
-        switch (sub) {
-            case "help" -> sendHelp(sender);
-            case "creator" -> sender.sendMessage(plugin.getMessages().get("commands.creator"));
-            case "info", "version" -> sender.sendMessage(plugin.getMessages().get(
-                    "commands.info", Placeholder.unparsed("version", plugin.getVersion())));
-            case "reload" -> {
-                if (!sender.hasPermission("minestormstatus.reload")) {
-                    sender.sendMessage(plugin.getMessages().get("general.no-permission"));
-                    return true;
-                }
-                plugin.reloadPlugin();
-                sender.sendMessage(plugin.getMessages().get("commands.reload-success"));
+        if (sub.equals("help")) {
+            plugin.getMessages().sendList(sender, "commands.help");
+        } else if (sub.equals("creator")) {
+            plugin.getMessages().send(sender, "commands.creator");
+        } else if (sub.equals("info") || sub.equals("version")) {
+            plugin.getMessages().send(sender, "commands.info", "{version}", plugin.getVersion());
+        } else if (sub.equals("reload")) {
+            if (!sender.hasPermission("minestormstatus.reload")) {
+                plugin.getMessages().send(sender, "general.no-permission");
+                return true;
             }
-            case "busy", "idle", "away", "clear" -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage(plugin.getMessages().get("general.players-only"));
-                    return true;
-                }
-                if (!player.hasPermission("minestormstatus.use")) {
-                    player.sendMessage(plugin.getMessages().get("general.no-permission"));
-                    return true;
-                }
-                StatusCommand.runOption(player, sub, plugin);
+            plugin.reloadPlugin();
+            plugin.getMessages().send(sender, "commands.reload-success");
+        } else if (sub.equals("busy") || sub.equals("idle") || sub.equals("away") || sub.equals("clear")) {
+            if (!(sender instanceof Player)) {
+                plugin.getMessages().send(sender, "general.players-only");
+                return true;
             }
-            default -> sender.sendMessage(plugin.getMessages().get("commands.unknown"));
+            Player player = (Player) sender;
+            if (!player.hasPermission("minestormstatus.use")) {
+                plugin.getMessages().send(player, "general.no-permission");
+                return true;
+            }
+            StatusCommand.runOption(player, sub, plugin);
+        } else {
+            plugin.getMessages().send(sender, "commands.unknown");
         }
         return true;
     }
 
-    private void sendHelp(CommandSender sender) {
-        for (Component line : plugin.getMessages().list("commands.help")) {
-            sender.sendMessage(line);
-        }
-    }
-
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> result = new ArrayList<>();
+        List<String> result = new ArrayList<String>();
         if (args.length != 1 || !sender.hasPermission("minestormstatus.command")) {
             return result;
         }
-        List<String> options = new ArrayList<>(List.of("help", "creator", "info"));
+        List<String> options = new ArrayList<String>(Arrays.asList("help", "creator", "info"));
         if (sender.hasPermission("minestormstatus.use")) {
-            options.addAll(List.of("busy", "idle", "away", "clear"));
+            options.addAll(Arrays.asList("busy", "idle", "away", "clear"));
         }
         if (sender.hasPermission("minestormstatus.reload")) {
             options.add("reload");

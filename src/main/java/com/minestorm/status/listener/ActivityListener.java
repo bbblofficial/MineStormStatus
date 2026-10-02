@@ -1,6 +1,9 @@
 package com.minestorm.status.listener;
 
 import com.minestorm.status.MineStormStatus;
+import com.minestorm.status.manager.StatusManager;
+import com.minestorm.status.manager.StatusType;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -20,7 +23,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 
-/** Tracks player movement/interaction to reset the inactivity timer (toggles in config.yml). */
+/** Tracks activity (resets the inactivity timer) and handles players joining / leaving. */
 public final class ActivityListener implements Listener {
 
     private final MineStormStatus plugin;
@@ -39,15 +42,49 @@ public final class ActivityListener implements Listener {
         }
     }
 
+    // ------------------------------------------------------------- join / quit
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        plugin.getStatusManager().markActive(event.getPlayer().getUniqueId());
+        final Player player = event.getPlayer();
+        StatusManager manager = plugin.getStatusManager();
+        manager.markActive(player.getUniqueId());
+
+        StatusType restored = null;
+        if (plugin.getConfig().getBoolean("join.restore-status", true)) {
+            restored = manager.restoreSaved(player.getUniqueId());
+        }
+        final StatusType restoredStatus = restored;
+        final boolean welcome = plugin.getConfig().getBoolean("join.welcome-back", true)
+                && player.hasPlayedBefore();
+
+        // Small delay so the messages are not lost in the join spam.
+        Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    return;
+                }
+                if (welcome) {
+                    plugin.getMessages().send(player, "join.welcome-back", "{player}", player.getName());
+                }
+                if (restoredStatus != null) {
+                    plugin.getMessages().send(player, "join.status-restored",
+                            "{status}", plugin.getMessages().statusName(restoredStatus));
+                    if (plugin.getConfig().getBoolean("action-bar.enabled", true)) {
+                        plugin.getActionBar().send(player, plugin.getMessages().hud(player, restoredStatus));
+                    }
+                }
+            }
+        }, 10L);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        plugin.getStatusManager().remove(event.getPlayer().getUniqueId());
+        plugin.getStatusManager().handleQuit(event.getPlayer().getUniqueId());
     }
+
+    // ---------------------------------------------------------------- activity
 
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
@@ -110,8 +147,8 @@ public final class ActivityListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         HumanEntity clicker = event.getWhoClicked();
-        if (clicker instanceof Player player) {
-            active(player, "inventory");
+        if (clicker instanceof Player) {
+            active((Player) clicker, "inventory");
         }
     }
 }
