@@ -1,0 +1,39 @@
+# MineStormStatus configuration
+# All messages use MiniMessage format: https://docs.advntr.dev/minimessage/format.html
+
+auto-afk:
+  enabled: true
+  # Seconds of inactivity before the player is switched to Idle (default 5 minutes).
+  idle-timeout-seconds: 300
+  # How often (ticks) inactivity is checked. 20 ticks = 1 second.
+  check-interval-ticks: 20
+  # If true, players with a manual Busy/Away status are also switched to Idle.
+  override-existing-status: false
+  # If true, an automatically applied Idle status is removed when the player becomes active again.
+  clear-idle-on-activity: true
+  # If true, turning the camera (not only moving) counts as activity.
+  count-rotation-as-activity: true
+
+action-bar:
+  enabled: true
+  # How often (ticks) the action bar is re-sent. Keep at 40 or below to avoid fading/flicker.
+  update-interval-ticks: 20
+
+mention:
+  # If false, "steve", "Steve" and "STEVE" all count as a mention of Steve.
+  case-sensitive: false
+
+messages:
+  players-only: '<red>Only players can use this command.</red>'
+  usage: '<red>Usage: /status [busy|idle|away|clear]</red>'
+  status-busy: '<gray>Your status is now <bold><red>Busy</red></bold>.</gray>'
+  status-idle: '<gray>Your status is now <bold><yellow>Idle</yellow></bold>.</gray>'
+  status-away: '<gray>Your status is now <bold><gray>Away</gray></bold>.</gray>'
+  status-cleared: '<gray>Your status has been cleared.</gray>'
+  busy-alert: '<red>This player is currently busy and cannot respond right now.</red>'
+  idle-alert: '<yellow>This player is currently idle and cannot respond right now.</yellow>'
+  auto-idle: '<yellow>You are currently idle.</yellow>'
+  auto-idle-cleared: '<gray>You are no longer idle.</gray>'
+  hud-idle: '<white>You are currently </white><bold><yellow>IDLE</yellow></bold>'
+  hud-busy: '<white>You are currently </white><bold><red>Busy</red></bold>'
+  hud-away: '<white>You are currently </white><bold><gray>away</gray></bold>'
