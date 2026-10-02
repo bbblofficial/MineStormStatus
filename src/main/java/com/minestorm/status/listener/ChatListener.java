@@ -3,8 +3,10 @@ package com.minestorm.status.listener;
 import com.minestorm.status.MineStormStatus;
 import com.minestorm.status.manager.StatusType;
 import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -24,22 +26,34 @@ public final class ChatListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
+        FileConfiguration config = plugin.getConfig();
         Player sender = event.getPlayer();
 
-        // Chatting counts as activity.
-        if (plugin.getStatusManager().markActive(sender.getUniqueId())) {
-            sender.sendMessage(plugin.getMessages().get("auto-idle-cleared"));
+        if (config.getBoolean("auto-afk.activity.chat", true)) {
+            plugin.getStatusManager().recordActivity(sender);
+        }
+        if (!config.getBoolean("mention.enabled", true)) {
+            return;
         }
 
-        String text = PlainTextComponentSerializer.plainText().serialize(event.message());
-        int flags = plugin.getConfig().getBoolean("mention.case-sensitive", false)
+        boolean alertBusy = config.getBoolean("mention.alert-busy", true);
+        boolean alertIdle = config.getBoolean("mention.alert-idle", true);
+        int flags = config.getBoolean("mention.case-sensitive", false)
                 ? 0
                 : Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+        String text = PlainTextComponentSerializer.plainText().serialize(event.message());
 
         for (Map.Entry<UUID, StatusType> entry : plugin.getStatusManager().snapshot().entrySet()) {
             StatusType type = entry.getValue();
-            if (type != StatusType.BUSY && type != StatusType.IDLE) {
-                continue; // Away is visual only.
+            // Away is visual only.
+            if (type == StatusType.BUSY && !alertBusy) {
+                continue;
+            }
+            if (type == StatusType.IDLE && !alertIdle) {
+                continue;
+            }
+            if (type == StatusType.AWAY) {
+                continue;
             }
             if (entry.getKey().equals(sender.getUniqueId())) {
                 continue;
@@ -52,7 +66,9 @@ public final class ChatListener implements Listener {
             Pattern pattern = Pattern.compile(
                     "(?<![A-Za-z0-9_])" + Pattern.quote(target.getName()) + "(?![A-Za-z0-9_])", flags);
             if (pattern.matcher(text).find()) {
-                sender.sendMessage(plugin.getMessages().get(type == StatusType.BUSY ? "busy-alert" : "idle-alert"));
+                sender.sendMessage(plugin.getMessages().get(
+                        type == StatusType.BUSY ? "alerts.busy" : "alerts.idle",
+                        Placeholder.unparsed("player", target.getName())));
             }
         }
     }

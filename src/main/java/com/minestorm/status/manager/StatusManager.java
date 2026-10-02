@@ -1,6 +1,8 @@
 package com.minestorm.status.manager;
 
 import com.minestorm.status.MineStormStatus;
+import net.kyori.adventure.text.Component;
+import org.bukkit.entity.Player;
 
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +45,27 @@ public final class StatusManager {
         statuses.remove(id);
     }
 
+    /** Sets a status and sends the configured confirmation message + HUD. */
+    public void applyAndNotify(Player player, StatusType type) {
+        setStatus(player.getUniqueId(), type);
+        player.sendMessage(plugin.getMessages().get("status.set." + type.getKey()));
+        if (plugin.getConfig().getBoolean("action-bar.enabled", true)) {
+            player.sendActionBar(plugin.getMessages().hud(type));
+        }
+    }
+
+    /** Clears the status and sends the configured message. */
+    public void clearAndNotify(Player player) {
+        UUID id = player.getUniqueId();
+        if (getStatus(id) == null) {
+            player.sendMessage(plugin.getMessages().get("status.nothing-to-clear"));
+            return;
+        }
+        clearStatus(id);
+        player.sendMessage(plugin.getMessages().get("status.cleared"));
+        player.sendActionBar(Component.empty());
+    }
+
     /** Immutable copy of all active statuses. */
     public Map<UUID, StatusType> snapshot() {
         return Map.copyOf(statuses);
@@ -62,6 +85,14 @@ public final class StatusManager {
             return statuses.remove(id, StatusType.IDLE);
         }
         return false;
+    }
+
+    /** Records activity and notifies the player if their automatic Idle status was removed. */
+    public void recordActivity(Player player) {
+        if (markActive(player.getUniqueId())
+                && plugin.getConfig().getBoolean("auto-afk.send-return-message", true)) {
+            player.sendMessage(plugin.getMessages().get("afk.returned"));
+        }
     }
 
     public long getIdleMillis(UUID id) {
