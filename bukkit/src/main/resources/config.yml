@@ -1,0 +1,66 @@
+# ============================================================
+#  MineStormStatus - config.yml   (Created by Muvixo)
+#  All texts live in messages.yml.
+#  Use /minestormstatus reload to apply changes.
+# ============================================================
+config-version: 2
+
+# Replace %placeholders% from PlaceholderAPI in messages.
+use-placeholderapi: true
+
+# Cross-server relay. Each server keeps its own statuses (no shared DB);
+# the relay only forwards status changes and mention alerts to other servers.
+# Set to false on a single server.
+network:
+  proxy: true
+  # Unique name of THIS backend, matching the name used in the proxy config.
+  server-name: server
+  # Long random string, identical on every backend. Packets are HMAC-signed.
+  secret: change-me-to-a-long-random-string
+
+auto-afk:
+  enabled: true
+  # Seconds of inactivity before a player is switched to Idle (300 = 5 min).
+  idle-timeout-seconds: 300
+  # How often (in ticks) inactivity is checked. 20 ticks = 1 second.
+  check-interval-ticks: 20
+  # true  = players with a manual Busy/Away status are also switched to Idle.
+  # false = only players with NO status are switched to Idle.
+  override-existing-status: false
+  # Remove the automatic Idle status when the player becomes active again.
+  clear-idle-on-activity: true
+  # Send "afk.now-idle" when a player is switched to Idle.
+  send-message: true
+  # Send "afk.returned" to the player when they come back.
+  send-return-message: true
+  # Tell everyone else ("afk.returned-broadcast") when a player comes back.
+  broadcast-return: false
+  # Which actions count as activity (reset the inactivity timer).
+  activity:
+    movement: true
+    # Turning the camera without moving.
+    rotation: true
+    interaction: true
+    chat: true
+    commands: true
+    inventory: true
+    blocks: true
+
+join:
+  # Send "join.welcome-back" to players who join again (not on their first join).
+  welcome-back: true
+  # Restore the manual status a player had when they left the server.
+  restore-status: true
+
+action-bar:
+  enabled: true
+  # How often (in ticks) the HUD is re-sent. 20 = once per second.
+  update-interval-ticks: 20
+
+mention:
+  enabled: true
+  # false: "steve", "Steve" and "STEVE" all count as a mention of Steve.
+  case-sensitive: false
+  # Send an alert to the tagger when the tagged player is Busy / Idle.
+  alert-busy: true
+  alert-idle: true

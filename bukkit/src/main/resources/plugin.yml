@@ -1,0 +1,30 @@
+name: MineStormStatus
+version: '1.0.0'
+main: com.minestorm.status.MineStormStatus
+api-version: '1.13'
+description: Player status (Busy/Idle/Away), auto-AFK and action bar HUD.
+author: Muvixo
+softdepend: [PlaceholderAPI]
+
+commands:
+  status:
+    description: Set or clear your status.
+    usage: '/status [busy|idle|away|clear]'
+  minestormstatus:
+    description: MineStormStatus main command.
+    usage: '/minestormstatus [help|busy|idle|away|clear|creator|info|reload]'
+    aliases: [mss]
+
+permissions:
+  minestormstatus.use:
+    description: Allows setting/clearing your status.
+    default: true
+  minestormstatus.command:
+    description: Allows /minestormstatus (help, creator, info).
+    default: true
+  minestormstatus.reload:
+    description: Allows /minestormstatus reload.
+    default: op
+  minestormstatus.afk.bypass:
+    description: Exempts the player from automatic AFK/idle detection.
+    default: false
