@@ -55,3 +55,30 @@ Artifacts:
 - `bukkit/target/MineStormStatus-Bukkit-1.0.0-java21.jar`
 - `bungee/target/MineStormStatus-Bungee-1.0.0.jar`
 - `velocity/target/MineStormStatus-Velocity-1.0.0.jar`
+
+## Cross-server relay (how it works)
+
+The proxy plugin (Bungee / Velocity) is a dumb, stateless pipe: it forwards every packet a backend
+sends to all OTHER backends. All logic lives in the backend plugin:
+
+- every backend keeps its own statuses and **mirrors the statuses of the other backends in memory**
+  (nothing is shared or stored in a database);
+- a status change is sent instantly (`STATUS`), and every `network.sync-interval-seconds` the
+  backend re-sends all its statuses (`SYNC`) so lost packets and restarts heal themselves;
+- a backend that just got a player asks the others for a `SYNC` (`REQUEST`);
+- mirrored entries expire after 3 missed heartbeats (crashed server, lost "clear");
+- mention alerts therefore also work for Busy / Idle players on other servers
+  (`network.cross-server-mentions`).
+
+Requirements: the proxy plugin must be installed on the proxy, `network.secret` must be identical on
+every backend and `network.server-name` unique. Run `/mss debug` on a backend to see whether the
+relay is connected (needs `minestormstatus.reload`).
+
+## Java 8 servers (1.8.8 - 1.16)
+
+The default builds target Java 17 / 21. A server running on Java 8 cannot load them. Build the
+backend jar for Java 8 with:
+
+```bash
+mvn clean package -Pjava8 -pl common,bukkit
+```

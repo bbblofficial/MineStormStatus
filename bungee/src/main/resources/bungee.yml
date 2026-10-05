@@ -1,5 +1,5 @@
 name: MineStormStatus
-version: '1.0.0'
+version: '${project.version}'
 main: com.minestorm.status.bungee.MineStormStatusBungee
 author: Muvixo
 description: Cross-server relay for MineStormStatus

@@ -16,6 +16,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 
@@ -28,6 +29,8 @@ public final class MineStormStatus extends JavaPlugin {
     private StatusManager statusManager;
     private ActionBar actionBar;
     private ProxyBridge proxyBridge;
+    private BukkitTask afkTask;
+    private BukkitTask hudTask;
 
     @Override
     public void onEnable() {
@@ -115,24 +118,38 @@ public final class MineStormStatus extends JavaPlugin {
         return true;
     }
 
+    /**
+     * Starts the AFK and HUD tasks. Only OUR two tasks are cancelled here - the old
+     * Bukkit.getScheduler().cancelTasks(this) would also kill the relay heartbeat task.
+     */
     private void startTasks() {
-        Bukkit.getScheduler().cancelTasks(this);
+        cancelOwnTasks();
         FileConfiguration config = getConfig();
 
         if (config.getBoolean("auto-afk.enabled", true)) {
             long interval = Math.max(1L, config.getLong("auto-afk.check-interval-ticks", 20L));
-            new AutoAfkTask(this).runTaskTimer(this, interval, interval);
+            afkTask = new AutoAfkTask(this).runTaskTimer(this, interval, interval);
         }
         if (config.getBoolean("action-bar.enabled", true)) {
             long interval = Math.max(1L, config.getLong("action-bar.update-interval-ticks", 20L));
-            new ActionBarTask(this).runTaskTimer(this, 1L, interval);
+            hudTask = new ActionBarTask(this).runTaskTimer(this, 1L, interval);
         }
+    }
+
+    private void cancelOwnTasks() {
+        if (afkTask != null) { afkTask.cancel(); afkTask = null; }
+        if (hudTask != null) { hudTask.cancel(); hudTask = null; }
     }
 
     public void reloadPlugin() {
         reloadConfig();
         messages.reload();
         startTasks();
+        // network.proxy / network.secret / network.server-name used to need a full restart.
+        if (proxyBridge != null) {
+            proxyBridge.disable();
+            if (getConfig().getBoolean("network.proxy", true)) proxyBridge.enable();
+        }
     }
 
     public String getVersion() { return getDescription().getVersion(); }

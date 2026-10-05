@@ -34,7 +34,7 @@ public final class AutoAfkTask extends BukkitRunnable {
             boolean eligible = current == null || (override && current != StatusType.IDLE);
             if (!eligible || manager.getIdleMillis(id) < timeoutMillis) continue;
 
-            manager.setAutoIdle(id);
+            manager.setAutoIdle(player);
             if (sendMessage) {
                 plugin.getMessages().send(player, "afk.now-idle",
                         "{seconds}", String.valueOf(timeoutSeconds));

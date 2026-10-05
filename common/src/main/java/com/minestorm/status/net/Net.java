@@ -20,19 +20,30 @@ import java.util.Arrays;
  *
  * Channel name is short and namespaced: valid on 1.8 (<=20 chars) and on 1.13+.
  *
- * Packet types:
- *   STATUS  playerName, statusKey  ("busy" / "idle" / "away" / "clear")
- *   MENTION senderName, targetName, statusKey
+ * Packet types (every packet carries the name of the sending backend first):
+ *   STATUS  origin, playerName, statusKey      statusKey = busy / idle / away / clear
+ *   SYNC    origin, (playerName, statusKey)*   full list of the sender's statuses (heartbeat)
+ *   REQUEST origin                             "please send me your SYNC now"
+ *   MENTION (legacy, decoded but ignored)
  */
 public final class Net {
     public static final String CHANNEL = "msstatus:main";
 
     public static final String STATUS  = "STATUS";
+    public static final String SYNC    = "SYNC";
+    public static final String REQUEST = "REQUEST";
+    /** Legacy packet from the first release. Still decodable, never acted upon. */
     public static final String MENTION = "MENTION";
 
     private Net() {}
 
+    /** An empty key makes HmacSHA256 throw, so every caller must check this first. */
+    public static boolean isUsableSecret(String secret) {
+        return secret != null && !secret.trim().isEmpty();
+    }
+
     public static byte[] encode(String secret, String type, String... args) {
+        if (!isUsableSecret(secret)) throw new IllegalArgumentException("secret must not be empty");
         try {
             ByteArrayOutputStream body = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(body);
@@ -50,9 +61,9 @@ public final class Net {
         }
     }
 
-    /** @return {type, args...} or null on invalid HMAC. */
+    /** @return {type, args...} or null on invalid HMAC / malformed data. */
     public static String[] decode(byte[] data, String secret) {
-        if (data == null || data.length <= 32) return null;
+        if (data == null || data.length <= 32 || !isUsableSecret(secret)) return null;
         byte[] mac = Arrays.copyOfRange(data, 0, 32);
         byte[] body = Arrays.copyOfRange(data, 32, data.length);
         if (!MessageDigest.isEqual(mac, mac(secret, body))) return null;

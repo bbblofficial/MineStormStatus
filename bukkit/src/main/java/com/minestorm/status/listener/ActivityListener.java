@@ -3,6 +3,7 @@ package com.minestorm.status.listener;
 import com.minestorm.status.MineStormStatus;
 import com.minestorm.status.manager.StatusManager;
 import com.minestorm.status.manager.StatusType;
+import com.minestorm.status.net.ProxyBridge;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.HumanEntity;
@@ -55,6 +56,11 @@ public final class ActivityListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             @Override public void run() {
                 if (!player.isOnline()) return;
+                ProxyBridge bridge = plugin.getProxyBridge();
+                if (bridge != null && bridge.isEnabled()) {
+                    if (restoredStatus != null) bridge.broadcastStatus(player.getName(), restoredStatus.getKey());
+                    bridge.requestSyncIfNeeded();
+                }
                 if (welcome) {
                     plugin.getMessages().send(player, "join.welcome-back",
                             "{player}", player.getName());
@@ -73,7 +79,7 @@ public final class ActivityListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        plugin.getStatusManager().handleQuit(event.getPlayer().getUniqueId());
+        plugin.getStatusManager().handleQuit(event.getPlayer().getUniqueId(), event.getPlayer().getName());
     }
 
     @EventHandler

@@ -1,6 +1,7 @@
 package com.minestorm.status.manager;
 
 import com.minestorm.status.MineStormStatus;
+import com.minestorm.status.net.ProxyBridge;
 import com.minestorm.status.util.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -10,6 +11,7 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +32,14 @@ public final class StatusManager {
 
     public StatusManager(MineStormStatus plugin) { this.plugin = plugin; }
 
+    /** Tell the other backends about a status change (no-op when the relay is off). */
+    private void announce(String playerName, String statusKey) {
+        ProxyBridge bridge = plugin.getProxyBridge();
+        if (bridge != null && bridge.isEnabled() && playerName != null) {
+            bridge.broadcastStatus(playerName, statusKey);
+        }
+    }
+
     // ------------------------------------------------------- statuses
 
     public StatusType getStatus(UUID id) { return statuses.get(id); }
@@ -44,6 +54,12 @@ public final class StatusManager {
         statuses.put(id, StatusType.IDLE);
     }
 
+    /** Auto-Idle that is also announced to the other servers. */
+    public void setAutoIdle(Player player) {
+        setAutoIdle(player.getUniqueId());
+        announce(player.getName(), StatusType.IDLE.getKey());
+    }
+
     public void clearStatus(UUID id) {
         autoIdle.remove(id);
         statuses.remove(id);
@@ -56,10 +72,7 @@ public final class StatusManager {
         if (plugin.getConfig().getBoolean("action-bar.enabled", true)) {
             plugin.getActionBar().send(player, messages.hud(player, type));
         }
-        // Cross-server: announce the status change.
-        if (plugin.getProxyBridge() != null && plugin.getProxyBridge().isEnabled()) {
-            plugin.getProxyBridge().broadcastStatus(player.getName(), type.getKey());
-        }
+        announce(player.getName(), type.getKey());
     }
 
     public void clearAndNotify(Player player) {
@@ -70,10 +83,10 @@ public final class StatusManager {
         }
         clearStatus(id);
         plugin.getMessages().send(player, "status.cleared");
-        plugin.getActionBar().clear(player);
-        if (plugin.getProxyBridge() != null && plugin.getProxyBridge().isEnabled()) {
-            plugin.getProxyBridge().broadcastStatus(player.getName(), "clear");
+        if (plugin.getConfig().getBoolean("action-bar.enabled", true)) {
+            plugin.getActionBar().clear(player);
         }
+        announce(player.getName(), "clear");
     }
 
     public Map<UUID, StatusType> snapshot() {
@@ -86,9 +99,12 @@ public final class StatusManager {
     public long markActive(UUID id) {
         long now = System.currentTimeMillis();
         Long previous = lastActivity.put(id, now);
-        if (!autoIdle.remove(id)) return -1L;
-        if (plugin.getConfig().getBoolean("auto-afk.clear-idle-on-activity", true)
-                && statuses.remove(id, StatusType.IDLE)) {
+        if (!autoIdle.contains(id)) return -1L;
+        // With clear-idle-on-activity=false the auto-Idle must stay "automatic": the old code
+        // dropped the flag here, turning it into a manual Idle that was even saved to data.yml.
+        if (!plugin.getConfig().getBoolean("auto-afk.clear-idle-on-activity", true)) return -1L;
+        autoIdle.remove(id);
+        if (statuses.remove(id, StatusType.IDLE)) {
             return previous == null ? 0L : Math.max(0L, now - previous);
         }
         return -1L;
@@ -97,6 +113,7 @@ public final class StatusManager {
     public void recordActivity(Player player) {
         long idleMillis = markActive(player.getUniqueId());
         if (idleMillis < 0) return;
+        announce(player.getName(), "clear");
         Messages messages = plugin.getMessages();
         if (plugin.getConfig().getBoolean("auto-afk.send-return-message", true)) {
             messages.send(player, "afk.returned", "{time}", Messages.formatDuration(idleMillis));
@@ -122,6 +139,15 @@ public final class StatusManager {
     }
 
     // ------------------------------------------------------- join/quit/save
+
+    /** Quit handling that also tells the other servers the player's status is gone. */
+    public void handleQuit(UUID id, String playerName) {
+        if (statuses.get(id) != null && playerName != null) {
+            ProxyBridge bridge = plugin.getProxyBridge();
+            if (bridge != null && bridge.isEnabled()) bridge.broadcastClear(playerName, id);
+        }
+        handleQuit(id);
+    }
 
     public void handleQuit(UUID id) {
         StatusType status = statuses.get(id);
@@ -151,8 +177,10 @@ public final class StatusManager {
         if (section == null) return;
         for (String key : section.getKeys(false)) {
             try {
+                // Locale.ROOT: with a Turkish default locale "idle".toUpperCase() is "IDLE" with a dotted I
+                // and valueOf() failed, silently dropping every saved status.
                 saved.put(UUID.fromString(key),
-                        StatusType.valueOf(section.getString(key, "").toUpperCase()));
+                        StatusType.valueOf(section.getString(key, "").toUpperCase(Locale.ROOT)));
             } catch (IllegalArgumentException ignored) { }
         }
     }

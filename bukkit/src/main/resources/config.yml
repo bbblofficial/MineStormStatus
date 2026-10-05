@@ -17,6 +17,11 @@ network:
   server-name: server
   # Long random string, identical on every backend. Packets are HMAC-signed.
   secret: change-me-to-a-long-random-string
+  # Mention alerts also work for Busy/Idle players that are on OTHER backends.
+  cross-server-mentions: true
+  # Each backend re-sends its statuses this often (seconds); mirrored entries
+  # expire after 3x this. Lower = faster recovery after a restart.
+  sync-interval-seconds: 30
 
 auto-afk:
   enabled: true

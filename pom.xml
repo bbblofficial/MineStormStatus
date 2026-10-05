@@ -29,7 +29,18 @@
 
     <profiles>
         <profile>
+            <id>java8</id>
+            <!-- For servers that still run on Java 8 (1.8.8 - 1.16):
+                 mvn clean package -Pjava8 -pl common,bukkit -->
+            <properties>
+                <java.version>8</java.version>
+            </properties>
+        </profile>
+        <profile>
             <id>java17</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <properties>
                 <java.version>17</java.version>
             </properties>

@@ -1,5 +1,5 @@
 name: MineStormStatus
-version: '1.0.0'
+version: '${project.version}'
 main: com.minestorm.status.MineStormStatus
 api-version: '1.13'
 description: Player status (Busy/Idle/Away), auto-AFK and action bar HUD.
